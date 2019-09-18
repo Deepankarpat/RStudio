@@ -1,0 +1,104 @@
+---
+title: "Sentiment_Analysis"
+author: "Deepankar Pattnaik"
+date: "6/24/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+twitter_data <- read.csv("./twitterdata.csv")
+library(sentimentr)
+tweet_text <-twitter_data$text
+class(twitter_data$text)
+tweet_text <- as.character(twitter_data$text)
+class(tweet_text)
+
+for(i in 1:nrow(twitter_data)){
+  c1 <- iconv(x = unlist(strsplit(tweet_text[i], split = " ")), from = "latin1", to = "ASCII")
+  tweet_text[i] <- paste(c1[!is.na(c1)], collapse = " ")
+  }
+
+rm(c1)
+
+
+tweet_text <- tolower(tweet_text) #convert all text to lower case
+tweet_text <- gsub("^rt ", "", tweet_text) # Removing RT from tweet)
+tweet_text <- gsub("@\\w+", "", tweet_text) # Replace @UserName
+tweet_text <- gsub("[[:punct:]]", "", tweet_text) # Remove punctuation
+tweet_text <- gsub("http\\w+", "", tweet_text) # Remove links
+tweet_text <- gsub("[ |\t]{2,}", "", tweet_text) # Remove tabs
+tweet_text <- gsub("^ ", "", tweet_text) # Remove blank spaces at the beginning
+tweet_text <- gsub(" $", "", tweet_text)
+View(tweet_text)
+install.packages("tidytext")
+install.packages("janeaustenr")
+library(dplyr)
+library(tidytext)
+library(janeaustenr)
+install.packages("ngram")
+library(ngram)
+install.packages("quanteda")
+library("quanteda")
+mytweet <- tokens(tweet_text) %>%
+    tokens_remove("\\p{P}", valuetype = "regex", padding = TRUE) %>%
+    tokens_remove(stopwords("english"), padding  = TRUE) %>%
+    tokens_ngrams(n = 2) %>%
+    dfm()
+
+
+mytweet1 <- colSums(mytweet, na.rm = FALSE)
+class(mytweet1)
+View(mytweet1)
+
+
+
+
+install.packages("qdap")
+library(qdap)
+tweet_text <- rm_stopwords(tweet_text,Top25Words)
+tweet_text <- as.character(tweet_text)
+
+
+```
+
+
+```{r}
+library(sentimentr)
+
+senti <- sentiment_by(tweet_text) 
+wc_b <- cbind(twitter_data, senti)
+wc_b$ave_sentiment <- round(wc_b$ave_sentiment, digits = 2)
+wc_b$sd <- round(wc_b$sd, digits = 2)
+rm(senti)
+library(plotly)
+plot_ly(wc_b, x = ~ave_sentiment, type = "histogram")
+
+```
+
+```{r}
+install.packages("SnowballC")
+library(SentimentAnalysis)
+senti1 <- analyzeSentiment(tweet_text)
+senti1$SentimentQDAP
+str(senti1)
+plot_ly(senti1, x = ~SentimentQDAP, type = "histogram")
+?boxplot
+boxplot(ave_sentiment ~ senti1$SentimentQDAP, data = wc_b)
+
+
+
+
+```
+
+
+```{r}
+twitter_data <- read.csv("./twitterdata.csv")
+install.packages("SentimentAnalysis")
+
+
+```
+

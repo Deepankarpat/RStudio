@@ -1,0 +1,180 @@
+---
+title: "Descriptive Statistics"
+---
+
+```{r setup, echo = F, warning = F}
+require(knitr, quietly = TRUE)
+# opts_knit$set(root.dir = '../../../')
+```
+
+# Setup
+
+## Packages
+
+We'll make use of the `psych` package.
+
+Make sure it's installed on you system and then load it into your workspace.
+
+```{r, eval = F}
+install.packages("psych")  # Only if not installed yet
+```
+
+```{r, warning = F}
+library(psych)  # load it into your workspace
+```
+
+## Our Data Set
+
+Let's read in the risk data to practice.
+
+```{r}
+d <- read.csv("risk.csv")
+head(d)
+summary(d)
+```
+
+## Our Data Set
+
+Convert relevant variables to factors.
+
+```{r, results = "hide"}
+d$subid <- factor(d$subid)
+
+d$gender <- factor(d$gender, levels = c(0, 1),
+                   labels = c("female", "male"))
+
+d$wvcat <- factor(d$wvcat, levels = c(0, 1, 2, 3),
+                  labels = c("Unclassifiable", "Individualist", 
+                             "Hierarchicalist", "Egalitarian"))
+```
+
+# Univariate Analysis
+
+## Frequencies and Proportions
+
+```{r}
+my.table <- table(d$gender)
+my.table  # Print frequencies
+
+prop.table(my.table)  # Print proportions
+```
+
+## Central Tendency
+
+Many base functions for describing distribution. Many require `na.rm = TRUE` to remove missing values.
+
+```{r}
+no.miss <- c(1, 20, 29.353, .20)
+mean(no.miss)
+with.miss <- c(1, 20, 29.353, NA)
+mean(with.miss)
+mean(with.miss, na.rm = TRUE)
+```
+
+## Central Tendency
+
+```{r}
+mean(d$risk, na.rm = TRUE)  # The mean
+median(d$risk, na.rm = TRUE)  # The median
+```
+
+## Dispersion
+
+```{r}
+var(d$risk, na.rm = TRUE)  # variance
+sd(d$risk, na.rm = TRUE)  # Standard deviation
+```
+
+## Conditional Distribution
+
+Sometimes you're interested in knowing the number/proportion of values that meet some condition. This takes two steps. The trick is to work with boolean values, knowing that `TRUE` is treated as `1`, and `FALSE` as `0`.
+
+1. Create boolean vector corresponding to conditional.
+2. Treating this as a vector of 1s and 0s, use the likes of `sum()` or `mean()` to compute the sum or proportion of TRUE.
+
+## Conditional Distribution
+
+```{r}
+over50 <- d$risk > 50
+sum(over50, na.rm = TRUE)
+mean(over50, na.rm = TRUE)
+prop.table(table(over50))
+```
+
+## Some Simple Plots
+
+Barplot for factors
+
+```{r}
+my.table <- table(d$gender)
+barplot(my.table)
+```
+
+## Some Simple Plots
+
+Histogram for numeric variable.
+
+```{r}
+hist(d$risk)  # Histogram
+```
+
+## Some Simple Plots
+
+Boxplot for numeric variable.
+
+```{r}
+boxplot(d$risk)  # boxplot
+```
+
+## Conditional Distribution
+
+Common condition is the number of missing values, handled using `is.na()`
+
+```{r}
+is.miss <- is.na(d$risk)
+table(is.miss)
+```
+
+## Overall Summmaries
+
+Easy base function, `summary(data)`
+
+```{r}
+summary(d)
+```
+
+## Overall Summmaries
+
+Alternative is `describe(data)` from the `psych` package.
+
+```{r}
+psych::describe(d)
+```
+
+# Bivariate Analysis
+
+## Cross-tabs (Factor x Factor)
+
+Add more arguements to `table()`
+
+```{r}
+my.table <- table(d$gender, d$wvcat)
+my.table  # Print frequencies
+prop.table(my.table)  # Cell proportions
+```
+
+## Describing by Group (Factor x Numeric)
+
+A simple method is provided by the `psych` package using `describeBy(mydata, group, ...)`
+
+```{r}
+psych::describeBy(d[, c("age", "risk")], d$gender)
+```
+
+## Multivariate Visualisations (*n* Numeric) 
+
+Again, `psych` provides a great function, `pairs.panels(data)`
+
+```{r}
+psych::pairs.panels(d[, c("age", "risk")])
+```

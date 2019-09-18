@@ -1,0 +1,85 @@
+---
+title: 'Data Wrangling Exercise : Case Tagging'
+author: "Yash Gupta"
+date: "15/06/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Task-1:Perform Descriptive Analysys on Data
+```{r}
+data_tag = readxl::read_xlsx(path = "./sampleid.xlsx")
+
+#No. of rows
+nrow(data_tag)
+
+#Names of coloumn
+names(data_tag)
+
+#Class of each coloumn 
+sapply(data_tag,class)
+
+#Total number of unique tickets
+length(unique(data_tag$`( Case ID #)`))
+
+#Range of numeric coloumn
+range(data_tag$`Reassignment count`,na.rm = T)
+
+#No. of counts and proportion each levels in factor and numeric coloumn
+table(data_tag$`Reassignment count`)
+prop.table(table(data_tag$`Reassignment count`))
+table(data_tag$`Assignment Group`)
+prop.table(table(data_tag$`Assignment Group`))
+
+#Frecquency of each tickets
+library(dplyr)
+data_tag %>% group_by(`( Case ID #)`) %>% summarise(frequency = n())
+```
+
+Task-2:Clean the Headers (i.e. remove special characters) and replace the space with “_” (underscore) using DPLYR and otherwise
+
+```{r}
+    library(janitor)
+    data_tag = data_tag %>% clean_names(case = "parsed")
+    data_tag
+```
+
+ Task-3 : A Case ID can be created/Opened by anyone (Imarticus or Non-Imarticus). But in subsequent entries if its assigned to Non-Imarticus (blank cells) even once then the particular Case ID should belong to Non-Imarticus else it should belong to Imarticus.
+```{r}
+data_tag %>%
+    group_by(Case_ID_number)%>%
+        summarise(Tag=ifelse(n()==1|(n()-1)==length(which(Assignment_Group!=""&row_number()!=1)),"Imarticus","Non-Imarticus"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,225 @@
+---
+title: "Twitter Analysis"
+author: "Deepankar Pattnaik"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation : rows
+    theme : cosmo
+    social: menu
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, comment = FALSE, message = FALSE, warning = FALSE, error = FALSE, fig.width = 11, fig.align = "center")
+
+hashtag <- '#internationalyogaday'
+
+library(twitteR)
+library("openssl")
+library("httpuv")
+library(tm)
+library(dplyr)
+library(plotly)
+library(wordcloud2)
+
+# Change the next four lines based on your own consumer_key, consume_secret, access_token, and access_secret.
+
+consumer_key <- "**************************"
+consumer_secret <- "************************************"
+access_token <- "*********************************"
+access_secret <- "************************************"
+
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+
+# tweets <- userTimeline("realDonaldTrump", n=200)
+# tweets = twitteR::twListToDF(tweets)
+
+tw = twitteR::searchTwitter(searchString = hashtag, n = 1e2, since = as.character(Sys.Date()-7), retryOnRateLimit = 1e3)
+df = twitteR::twListToDF(tw)
+
+tweets.text <- df$text
+
+for(i in 1:nrow(df)){
+  c1 <- iconv(x = unlist(strsplit(tweets.text[i], split = " ")), from = "latin1", to = "ASCII")
+  tweets.text[i] <- paste(c1[!is.na(c1)], collapse = " ")
+  }
+
+rm(c1)
+
+
+#po <- userTimeline("tmohanty8", n=20)
+#po[[1]]
+```
+
+Twitter Analysis
+=======================================================================
+
+Row {data-height=1200}
+-----------------------------------------------------------------------
+
+### Word Frequency
+
+```{r}
+tweets.text <- tolower(tweets.text) #convert all text to lower case
+tweets.text <- gsub("^rt ", "", tweets.text) # Removing RT from tweet)
+tweets.text <- gsub("@\\w+", "", tweets.text) # Replace @UserName
+tweets.text <- gsub("[[:punct:]]", "", tweets.text) # Remove punctuation
+tweets.text <- gsub("http\\w+", "", tweets.text) # Remove links
+tweets.text <- gsub("[ |\t]{2,}", "", tweets.text) # Remove tabs
+tweets.text <- gsub("^ ", "", tweets.text) # Remove blank spaces at the beginning
+tweets.text <- gsub(" $", "", tweets.text) # Remove blank spaces at the end
+View(tweets.text)
+library(memoise)
+getTermMatrix <- memoise(function(x) {
+  # dates <- unique(prob$Open.Month)
+  myCorpus = Corpus(VectorSource(x))
+  myCorpus = tm_map(myCorpus, content_transformer(tolower))
+  myCorpus = tm_map(myCorpus, removePunctuation)
+  myCorpus = tm_map(myCorpus, removeNumbers)
+  myCorpus = tm_map(myCorpus, removeWords,
+                    c(tm::stopwords("SMART")))
+  c
+
+  myDTM = TermDocumentMatrix(myCorpus,
+                             control = list(minWordLength = 1))
+
+  m = as.matrix(myDTM)
+
+  sort(rowSums(m), decreasing = TRUE)
+})
+
+library("wordcloud")
+
+#generate wordcloud on words
+v <- getTermMatrix(tweets.text)
+v <- data.frame(word = names(v), freq = v)
+
+library(wordcloud2)
+library(webshot)
+library(htmlwidgets)
+my_graph <- wordcloud2(v, size = 1.5)
+saveWidget(my_graph, "tmp.html", selfcontained = F)
+webshot("tmp.html", "wc1.png", delay = 10, vwidth = 400, vheight = 400)
+
+
+# rm(my_graph, tmp.html)
+```
+
+
+
+### Your Sentiments
+
+```{r}
+library(sentimentr)
+
+senti_one <- sentiment_by(tweets.text) 
+wc_br <- cbind(df, senti_one)
+wc_br$ave_sentiment <- round(wc_br$ave_sentiment, digits = 2)
+wc_br$sd <- round(wc_br$sd, digits = 2)
+rm(senti_one)
+
+plot_ly(wc_br, x = ~ave_sentiment, type = "histogram")
+
+
+```
+
+### Top Twitteratti
+
+```{r }
+v1 <- df %>% count(screenName, sort = TRUE)
+library(RColorBrewer)
+
+v1$screenName <- factor(v1$screenName, levels = v1$screenName)
+v1$screenName <- factor(v1$screenName, levels = rev(levels(v1$screenName)))
+
+plot_ly(data = v1[1:10,], x = ~n, y = ~screenName, type = "bar", marker = list(color = brewer.pal(10, "Dark2"))) %>% 
+  layout(margin = list(
+  l = 125,
+  r = 10,
+  b = 50,
+  t = 50,
+  pad = 2
+))
+# names(v1) <- c("word", "freq")
+
+# wordcloud2(v1, size=1.6)
+# library(wordcloud2)
+# library(webshot)
+# library(htmlwidgets)
+# 
+# my_graph2 <- wordcloud2(v1, size = 1.5)
+# saveWidget(my_graph2, "tmp1.html", selfcontained = F)
+# webshot("tmp1.html", "wc2.png", delay = 15, vwidth = 300, vheight = 300)
+# wordcloud::wordcloud(v1$screenName, v1$n, min.freq = 1, max.words = max(v1$n), random.order=FALSE, rot.per=.3, colors=brewer.pal(8, "Dark2"))
+
+```
+
+Word Network
+=======================================================================
+
+Row {data-height = 1200}
+-----------------------------------------------------------------------
+
+### How words are associated
+
+```{r}
+library(visNetwork)
+termMatrix <- function(x, sparsity){
+  
+  myCorpus <- Corpus(VectorSource(x))
+  myCorpus <- tm::tm_map(myCorpus,content_transformer(tolower))
+  # remove punctuation
+  myCorpus <- tm::tm_map(myCorpus, removePunctuation)
+  # remove numbers
+  myCorpus <- tm::tm_map(myCorpus, removeNumbers)
+  # remove stopwords
+  myStopwords <- c(tm::stopwords('english'), "now", "please")
+  myCorpus <- tm_map(myCorpus, removeWords, myStopwords)
+  tdm <- TermDocumentMatrix(myCorpus, control = list(minWordLength = 1))
+  tdm <- removeSparseTerms(tdm, sparsity)
+  m <- as.matrix(tdm)
+  # m[m>=1] <- 1
+  m %*% t(m)
+}
+
+
+
+library(igraph)
+g <- igraph::graph.adjacency(termMatrix(tweets.text, 0.99), weighted=T, mode = "undirected")
+g <- simplify(g)
+wc <- cluster_walktrap(g)
+members <- membership(wc)
+data <- toVisNetworkData(g)
+
+nodes = data$nodes
+edges = data$edges
+
+nodes$label = nodes$id
+nodes$group = as.numeric(members)
+# get data and plot :
+
+
+visNetwork(nodes = nodes, edges = edges) %>%
+  visPhysics(stabilization = F,maxVelocity = 1) %>%
+  visOptions(highlightNearest = TRUE, selectedBy = "group", nodesIdSelection = TRUE)
+
+
+```
+
+Twitter Data
+=======================================================================
+
+Column {data-width = 1200}
+-----------------------------------------------------------------------
+
+### Tweets
+
+```{r}
+# library(DT)
+DT::datatable(df)
+
+```
+
+
+
+
