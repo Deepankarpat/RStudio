@@ -1,6 +1,6 @@
 ---
 title: 'Data Wrangling Exercise : Case Tagging'
-author: "Yash Gupta"
+author: "Deepankar Pattnaik"
 date: "15/06/2019"
 output: html_document
 ---
